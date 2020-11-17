@@ -11,6 +11,7 @@ const { bignumber } = math;
 import Localize from './localize';
 import PropTypes from 'prop-types';
 import React from 'react';
+import isNull from 'lodash/isNull';
 
 export class AssetPieChartData {
   /**
@@ -73,14 +74,77 @@ export default class AssetPieChart extends React.Component {
   constructor(props) {
     super(props);
     this.canvas = React.createRef();
-    this.state = { showSelected: false, selectedPt: {x: 0, y: 0} };
+    this.state = { showSelected: false, selectedPt: {x: 0, y: 0}, selectedBorderOpacity: 1 };
+
+    // Used for the border transitioning
+    let hovering = false;
+    const beginningOpacity = 0;
+    let currentOpacity = beginningOpacity;
+    const endOpacity = 1;
+    const duration = 150;
+    let begin = null;
+    let moveBeginSet = false;
+
     this.onMouseMove = (event) => {
       const pt = {x: (event.clientX)*window.devicePixelRatio,
                   y: (event.clientY)*window.devicePixelRatio};
-      this.setState({ showSelected: true, selectedPt: pt });
+      if(!hovering) {
+        hovering = true;
+        moveBeginSet = false;
+        const transitionOpacityIn = time => {
+          if(!hovering) {
+            return;
+          } else if(isNull(begin)) {
+            begin = time;
+            moveBeginSet = true;
+          } else if(!moveBeginSet) {
+            begin = time - (duration - (time - begin));
+            moveBeginSet = true;
+          }
+          const diff = time - begin;
+          const percent = diff / duration;
+          if(diff < duration) {
+            currentOpacity = endOpacity * percent;
+            this.setState({selectedBorderOpacity: currentOpacity});
+            window.requestAnimationFrame(transitionOpacityIn);
+          } else {
+            begin = null;
+            currentOpacity = endOpacity;
+            this.setState({selectedBorderOpacity: currentOpacity});
+          }
+        };
+        this.setState({ showSelected: true, selectedPt: pt });
+        window.requestAnimationFrame(transitionOpacityIn);
+      } else {
+        this.setState({ showSelected: true, selectedPt: pt });
+      }
     };
     this.onMouseLeave = (event) => {
-      this.setState({ showSelected: false, selectedPt: {x: 0, y: 0} });
+      hovering = false;
+      let beginSet = false;
+      const transitionOpacityOut = time => {
+        if(hovering) {
+          return;
+        } if(isNull(begin)) {
+          begin = time;
+          beginSet = true;
+        } else if(!beginSet) {
+          begin = time - (duration - (time - begin));
+          beginSet = true;
+        }
+        const diff = time - begin;
+        const percent = diff / duration;
+        if(diff < duration) {
+          currentOpacity = endOpacity - (endOpacity * percent);
+          this.setState({selectedBorderOpacity: currentOpacity});
+          window.requestAnimationFrame(transitionOpacityOut);
+        } else {
+          begin = null;
+          currentOpacity = beginningOpacity;
+          this.setState({ showSelected: false, selectedPt: {x: 0, y: 0}, selectedBorderOpacity: endOpacity });
+        }
+      };
+      window.requestAnimationFrame(transitionOpacityOut);
     };
   }
 
@@ -134,7 +198,7 @@ export default class AssetPieChart extends React.Component {
     ctx.textAlign = 'center';
     ctx.fillStyle = 'white';
 
-    const { showSelected, selectedPt } = this.state;
+    const { showSelected, selectedPt, selectedBorderOpacity } = this.state;
     const boundingRect = canvas.getBoundingClientRect();
     selectedPt.x -= boundingRect.x * window.devicePixelRatio;
     selectedPt.y -= boundingRect.y * window.devicePixelRatio;
@@ -198,7 +262,7 @@ export default class AssetPieChart extends React.Component {
       if (showSelected && (selectedAngleFrom !== 0 && selectedAngleTo !== 0 || data.length === 1)) {
         ctx.save();
         ctx.lineWidth = this._pix(2);
-        ctx.strokeStyle = 'cyan';
+        ctx.strokeStyle = `rgb(0,255,255, ${selectedBorderOpacity})`;
         ctx.lineCap = 'square';
         const radiusLower = radius-padding/2;
         const radiusUpper = radius+padding/2;
