@@ -262,9 +262,9 @@ class Api {
     this._proc.on(apiConstants.general_restartInstallUpdate, async function() {
       logger.info('User confirmed install downloaded update');
       // await this._shutdown.shutdown();
-      // this._autoUpdater.quitAndInstall();
-      this._app.relaunch();
-      this.app.quit();
+      this._autoUpdater.quitAndInstall();
+      // this._app.relaunch();
+      // this.app.quit();
     });
   }
 
