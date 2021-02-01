@@ -255,10 +255,10 @@ app.on('ready', async () => {
   appWindow = openAppWindow(path.resolve(__dirname, '../static/index.html'), storage, devtools);
   // Prevent close outside shutdown
   appWindow.getWindow().on('close', e => {
-    // if (!shutdownMgr.shutdownRequested()) {
-    //   e.preventDefault();
-    //   appWindow.getWindow().send(apiConstants.general_onShutdown);
-    // }
+    if (!shutdownMgr.shutdownRequested()) {
+      e.preventDefault();
+      appWindow.getWindow().send(apiConstants.general_onShutdown);
+    }
   });
   // Prevent opening any new windows at this point
   app.on('web-contents-created', (event, contents) => {
